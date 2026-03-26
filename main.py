@@ -8,6 +8,7 @@ from reportlab.lib.units import cm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import io
+from datetime import datetime # ახალი: თარიღისთვის
 
 # ფონტის რეგისტრაცია (ქართულისთვის)
 try:
@@ -46,15 +47,19 @@ if uploaded_file:
         temp_df = pd.DataFrame({"სახელი": names, "ვალი": debts, "ავანსი": advances})
         temp_df = temp_df[temp_df["სახელი"].notna() & ~temp_df["სახელი"].str.contains("ჯამი|სულ|total", case=False, na=False)]
 
-        debtors_df = temp_df[temp_df["ვალი"] > 0]
-        advances_df = temp_df[temp_df["ავანსი"] > 0]
+        debtors_df = temp_df[temp_df["ვალი"] > 0][["სახელი", "ვალი"]] # ხარვეზის გასწორება: მხოლოდ 2 სვეტი
+        advances_df = temp_df[temp_df["ავანსი"] > 0][["სახელი", "ავანსი"]] # ხარვეზის გასწორება: მხოლოდ 2 სვეტი
 
         debtors_count = len(debtors_df)
-        # შენი ფორმულა: (სულ - მევალეები) * ტარიფი
         building_balance = (total_residents - debtors_count) * tariff
+        
+        # მიმდინარე თარიღი ქართულად
+        today_str = datetime.now().strftime("%d/%m/%Y")
         
         # --- PREVIEW ---
         st.subheader("📊 წინასწარი გადახედვა")
+        st.write(f"📅 ანგარიშის თარიღი: {today_str}") # Preview-ზეც გამოვაჩინოთ
+
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("მევალეები", debtors_count)
         c2.metric("ბალანსი", f"{building_balance:.2f} GEL")
@@ -72,11 +77,13 @@ if uploaded_file:
             elements = []
             
             title_s = ParagraphStyle('Title', fontName='geo', fontSize=18, alignment=1)
+            date_s = ParagraphStyle('Date', fontName='geo', fontSize=10, alignment=1, spaceAfter=20) # თარიღის სტილი
             section_s = ParagraphStyle('Section', fontName='geo', fontSize=14, alignment=1, spaceAfter=10)
 
             elements.append(Paragraph(f"პროექტი: {project_name}", title_s))
             elements.append(Paragraph("ფინანსური ანგარიშგება", title_s))
-            elements.append(Spacer(1, 20))
+            elements.append(Paragraph(f"შექმნის თარიღი: {today_str}", date_s)) # ახალი: თარიღი PDF-ში
+            elements.append(Spacer(1, 10))
 
             summary_data = [
                 ["დასახელება", "მნიშვნელობა"],
@@ -86,7 +93,8 @@ if uploaded_file:
                 ["კორპუსის ბალანსი (დათვლილი)", f"{building_balance:.2f} GEL"],
                 ["ჯამური დავალიანება", f"{debtors_df['ვალი'].sum():.2f} GEL"]
             ]
-            st_table = Table(summary_data, colWidths=[9*cm, 5*cm])
+            # გაზრდილი სიგანე: 9.5cm + 5cm = 14.5cm (A4-ისთვის ნორმალურია)
+            st_table = Table(summary_data, colWidths=[9.5*cm, 5*cm])
             st_table.setStyle(TableStyle([
                 ("FONTNAME", (0,0), (-1,-1), "geo"),
                 ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
@@ -99,22 +107,28 @@ if uploaded_file:
 
             # მევალეების ცხრილი
             elements.append(Paragraph("მევალეების სია", section_s))
-            d_list = [["მესაკუთრე", "ვალი"]] + debtors_df.values.tolist()
-            dt = Table(d_list, colWidths=[10*cm, 4*cm], repeatRows=1)
+            # ხარვეზის გასწორება: მკაცრად 2 სვეტი
+            d_list = [["მესაკუთრე", "ვალი"]] + debtors_df[["სახელი", "ვალი"]].values.tolist()
+            # გაზრდილი სიგანე სახელისთვის: 11cm + 4cm = 15cm
+            dt = Table(d_list, colWidths=[11*cm, 4*cm], repeatRows=1)
             dt.setStyle(TableStyle([
                 ("FONTNAME", (0,0), (-1,-1), "geo"), ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
-                ("BACKGROUND", (0,0), (-1,0), colors.indianred), ("TEXTCOLOR", (0,0), (-1,0), colors.white)
+                ("BACKGROUND", (0,0), (-1,0), colors.indianred), ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+                ("ALIGN", (1, 0), (1, -1), "RIGHT") # ვალის გასწორება მარჯვნივ
             ]))
             elements.append(dt)
             elements.append(PageBreak())
 
             # ავანსების ცხრილი
             elements.append(Paragraph("ავანსების სია", section_s))
-            a_list = [["მესაკუთრე", "ავანსი"]] + advances_df.values.tolist()
-            at = Table(a_list, colWidths=[10*cm, 4*cm], repeatRows=1)
+            # ხარვეზის გასწორება: მკაცრად 2 სვეტი
+            a_list = [["მესაკუთრე", "ავანსი"]] + advances_df[["სახელი", "ავანსი"]].values.tolist()
+            # გაზრდილი სიგანე სახელისთვის: 11cm + 4cm = 15cm
+            at = Table(a_list, colWidths=[11*cm, 4*cm], repeatRows=1)
             at.setStyle(TableStyle([
                 ("FONTNAME", (0,0), (-1,-1), "geo"), ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
-                ("BACKGROUND", (0,0), (-1,0), colors.seagreen), ("TEXTCOLOR", (0,0), (-1,0), colors.white)
+                ("BACKGROUND", (0,0), (-1,0), colors.seagreen), ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+                ("ALIGN", (1, 0), (1, -1), "RIGHT") # ავანსის გასწორება მარჯვნივ
             ]))
             elements.append(at)
 
