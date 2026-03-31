@@ -57,7 +57,9 @@ with st.sidebar:
     st.divider()
     uploaded_file = st.file_uploader("ამოირჩიეთ CSV ფაილი", type=["csv"])
 
-st.title(f"🏙️ {project_name}: ფინანსური მენეჯერი")
+    apply_tax = st.checkbox("გამოაკლდეს საშემოსავლო (20%)", value=True)
+
+    st.title(f"🏙️ {project_name}: ფინანსური მენეჯერი")
 
 # ── მთავარი ლოგიკა ────────────────────────────────────────────────────────────
 if uploaded_file:
@@ -81,19 +83,21 @@ if uploaded_file:
         total_debt_sum    = debtors_df["ვალი"].sum()
         total_advance_sum = advances_df["ავანსი"].sum()
 
-        # --- განახლებული ლოგიკა ---
-        payers_count = total_residents - debtors_count # რეალური გადამხდელები
+        # --- განახლებული "ჭკვიანი" ლოგიკა ---
+        payers_count = total_residents - debtors_count 
+        
+        # გადასახადის კოეფიციენტი
+        tax_multiplier = 0.8 if apply_tax else 1.0
         
         raw_collection = payers_count * tariff
-        net_collection = raw_collection * 0.8
+        net_collection = raw_collection * tax_multiplier
         
-        # თავმჯდომარის ხელფასი: ერთეული ლარი * გადამხდელების რაოდენობა
         total_manager_salary_gross = payers_count * manager_salary_gross
-        manager_salary_net = total_manager_salary_gross * 0.8
+        manager_salary_net = total_manager_salary_gross * tax_multiplier
         
         total_available = previous_balance + net_collection
         
-        # ბალანსს აკლდება სრული დარიცხული ხელფასი
+        # ბალანსს ყოველთვის აკლდება სრული დარიცხული ხელფასი
         final_monthly_balance = total_available - expenses - total_manager_salary_gross
 
         today_str = datetime.now().strftime("%d/%m/%Y")
