@@ -105,7 +105,8 @@ if uploaded_file:
         # ── PREVIEW ──────────────────────────────────────────────────────────
         st.subheader("📊 ფინანსური შეჯამება")
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("წმინდა შემოსავალი (-20%)", f"{net_collection:.2f} GEL")
+        income_label = "წმინდა შემოსავალი (-20%)" if apply_tax else "ჯამური შემოსავალი"
+        c1.metric(income_label, f"{net_collection:.2f} GEL")
         c2.metric("ჯამური ბალანსი",           f"{total_available:.2f} GEL")
         c3.metric("ხარჯი + ხელფასი", f"-{(expenses + total_manager_salary_gross):.2f} GEL")
         c4.metric("მიმდინარე ნაშთი",           f"{final_monthly_balance:.2f} GEL")
