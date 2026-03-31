@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import cm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import io
+import os
 from datetime import datetime
 
 # ფონტის რეგისტრაცია
@@ -37,7 +38,13 @@ with st.sidebar:
     previous_balance = st.number_input("წინა თვის ნაშთი (GEL)", value=0.0, step=10.0)
     work_description = st.text_area("შესრულებული სამუშაოები (ფასიანი)", placeholder="მაგ: ლიფტის შეკეთება...")
     expenses = st.number_input("გაწეული ხარჯი (GEL)", min_value=0.0, value=0.0, step=10.0)
-    manager_salary = st.number_input("თავმჯდომარის ხელფასი (დარიცხული GEL)", min_value=0.0, value=0.0, step=10.0)
+    
+    # დამატებული ხელფასის ველი
+    manager_salary_gross = st.number_input("თავმჯდომარის ხელფასი (დარიცხული - Gross)", min_value=0.0, value=0.0, step=10.0)
+    
+    st.divider()
+    st.subheader("🛠️ დამატებითი ინფორმაცია")
+    free_work_description = st.text_area("უფასოდ შესრულებული სამუშაოები", placeholder="მაგ: გენერალური დალაგება საჩუქრად...")
     
     st.divider()
     uploaded_file = st.file_uploader("ამოირჩიეთ CSV ფაილი", type=["csv"])
@@ -46,15 +53,10 @@ st.title(f"🏙️ {project_name}: ფინანსური მენეჯ�
 
 if uploaded_file:
     try:
-        # მნიშვნელოვანი: utf-8-sig შველის ქართულ ტექსტს CSV-ში
+        # ვიყენებთ utf-8-sig-ს ქართული ასოებისთვის
         df = pd.read_csv(uploaded_file, encoding='utf-8-sig')
         
-        # თუ მაინც კითხვის ნიშნებია, ვცადოთ სხვა კოდირება
-        if df.iloc[:, 1].astype(str).str.contains('').any():
-            uploaded_file.seek(0)
-            df = pd.read_csv(uploaded_file, encoding='cp1251')
-
-        names = df.iloc[:, 1].astype(str)
+        names = df.iloc[:, 1]
         debts = df.iloc[:, -2].apply(clean_val)
         advances = df.iloc[:, -1].apply(clean_val)
 
@@ -68,71 +70,138 @@ if uploaded_file:
         total_debt_sum = debtors_df["ვალი"].sum()
         total_advance_sum = advances_df["ავანსი"].sum()
         
-        # გამოთვლები
+        # --- გამოთვლები (20%-იანი საშემოსავლოს გათვალისწინებით) ---
         raw_collection = (total_residents - debtors_count) * tariff
-        net_collection = raw_collection * 0.8
-        total_available = previous_balance + net_collection
-        final_monthly_balance = total_available - expenses - manager_salary
-        net_salary = manager_salary * 0.8
+        net_collection = raw_collection * 0.8  # შემოსავალი საშემოსავლოს გარეშე
         
-        # PREVIEW ეკრანზე
+        manager_salary_net = manager_salary_gross * 0.8 # ხელზე ასაღები ხელფასი
+        
+        total_available = previous_balance + net_collection
+        # ბალანსს ვაკლებთ ხარჯებს და სრულ დარიცხულ ხელფასს
+        final_monthly_balance = total_available - expenses - manager_salary_gross
+        
+        today_str = datetime.now().strftime("%d/%m/%Y")
+        
+        # --- PREVIEW ---
         st.subheader("📊 ფინანსური შეჯამება")
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("წმინდა შემოსავალი (-20%)", f"{net_collection:.2f} GEL")
         c2.metric("ჯამური ბალანსი", f"{total_available:.2f} GEL")
-        c3.metric("ხარჯი + ხელფასი", f"-{(expenses + manager_salary):.2f} GEL")
+        c3.metric("ხარჯი + ხელფასი", f"-{(expenses + manager_salary_gross):.2f} GEL")
         c4.metric("მიმდინარე ნაშთი", f"{final_monthly_balance:.2f} GEL")
 
         tab1, tab2 = st.tabs(["🔴 მევალეების სია", "🟢 ავანსების სია"])
         with tab1:
             st.dataframe(debtors_df, use_container_width=True)
+            st.write(f"**ჯამური დავალიანება: {total_debt_sum:.2f} GEL**")
         with tab2:
             st.dataframe(advances_df, use_container_width=True)
+            st.write(f"**ჯამური ავანსი: {total_advance_sum:.2f} GEL**")
 
+        # --- PDF გენერაცია ---
         if st.button("🚀 დააგენერირე PDF ანგარიში", type="primary"):
             buffer = io.BytesIO()
             doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
             elements = []
             
             # სტილები
+            title_s = ParagraphStyle('Title', fontName='geo', fontSize=18, alignment=1, spaceAfter=5)
+            date_s = ParagraphStyle('Date', fontName='geo', fontSize=10, alignment=1, spaceAfter=20)
+            section_s = ParagraphStyle('Section', fontName='geo', fontSize=14, alignment=1, spaceAfter=10, spaceBefore=15)
             cell_text_s = ParagraphStyle('CellText', fontName='geo', fontSize=10, leading=12)
-            title_s = ParagraphStyle('Title', fontName='geo', fontSize=18, alignment=1)
-            
+            text_s = ParagraphStyle('Text', fontName='geo', fontSize=11, leading=14)
+            bold_text_s = ParagraphStyle('BoldText', fontName='geo', fontSize=11, leading=14, spaceBefore=10)
+
+            # ლოგოს დამატება (თუ ფაილი არსებობს)
+            if os.path.exists("logo.png"):
+                img = Image("logo.png", width=3*cm, height=3*cm)
+                img.hAlign = 'CENTER'
+                elements.append(img)
+                elements.append(Spacer(1, 10))
+
             elements.append(Paragraph(f"პროექტი: {project_name}", title_s))
-            elements.append(Spacer(1, 20))
+            elements.append(Paragraph("ფინანსური ანგარიშგება", title_s))
+            elements.append(Paragraph(f"შექმნის თარიღი: {today_str}", date_s))
 
-            # შეჯამების ცხრილი
             summary_data = [
-                [Paragraph("დასახელება", cell_text_s), Paragraph("მნიშვნელობა", cell_text_s)],
-                [Paragraph("შემოსავალი (წმინდა)", cell_text_s), f"{net_collection:.2f}"],
-                [Paragraph("ჯამური ნაშთი", cell_text_s), f"{final_monthly_balance:.2f}"]
+                ["დასახელება", "მნიშვნელობა"],
+                ["მობინადრეების სულ რაოდენობა", str(total_residents)],
+                ["მევალეების რაოდენობა", str(debtors_count)],
+                ["ამ თვის შემოსავალი (წმინდა -20%)", f"{net_collection:.2f} GEL"],
+                ["წინა თვის ნაშთი (+)", f"{previous_balance:.2f} GEL"],
+                ["გაწეული ხარჯი (-)", f"{expenses:.2f} GEL"]
             ]
-            if manager_salary > 0:
-                summary_data.append([Paragraph("ხელფასი (დარიცხული)", cell_text_s), f"{manager_salary:.2f}"])
+            
+            # ხელფასის ინფორმაცია (ემატება მხოლოდ თუ > 0)
+            if manager_salary_gross > 0:
+                summary_data.append(["ხელფასი (დარიცხული)", f"{manager_salary_gross:.2f} GEL"])
+                summary_data.append(["ხელფასი (ხელზე ასაღები)", f"{manager_salary_net:.2f} GEL"])
 
+            summary_data.append(["მიმდინარე თვის ნაშთი (ნეტო)", f"{final_monthly_balance:.2f} GEL"])
+            
             st_table = Table(summary_data, colWidths=[10*cm, 5*cm])
             st_table.setStyle(TableStyle([
                 ("FONTNAME", (0,0), (-1,-1), "geo"),
                 ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+                ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#2C3E50")),
+                ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+                ("BACKGROUND", (0, -1), (1, -1), colors.lightgreen),
+                ("FONTSIZE", (0, -1), (1, -1), 12),
+                ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
             ]))
             elements.append(st_table)
+            
+            if work_description:
+                elements.append(Spacer(1, 15))
+                elements.append(Paragraph("<b>🛠️ შესრულებული სამუშაოების დეტალები:</b>", bold_text_s))
+                elements.append(Paragraph(work_description.replace('\n', '<br/>'), text_s))
+
+            if free_work_description:
+                elements.append(Spacer(1, 10))
+                elements.append(Paragraph("<b>✨ დამატებითი სამუშაოები (ხარჯის გარეშე):</b>", bold_text_s))
+                elements.append(Paragraph(free_work_description.replace('\n', '<br/>'), text_s))
+
             elements.append(PageBreak())
 
-            # მევალეების სია (აუცილებელია Paragraph უჯრაში ქართულისთვის)
-            elements.append(Paragraph("მევალეების სია", title_s))
-            d_list = [[Paragraph("მესაკუთრე", cell_text_s), Paragraph("დავალიანება", cell_text_s)]]
+            # მევალეების სია
+            elements.append(Paragraph("მევალეების სია", section_s))
+            d_list = [[Paragraph("<b>მესაკუთრე</b>", cell_text_s), Paragraph("<b>დავალიანება</b>", cell_text_s)]]
             for row in debtors_df.values.tolist():
                 d_list.append([Paragraph(str(row[0]), cell_text_s), f"{row[1]:.2f}"])
             
-            dt = Table(d_list, colWidths=[11.5*cm, 3.5*cm])
+            d_list.append([Paragraph("<b>სულ ჯამური დავალიანება:</b>", cell_text_s), f"<b>{total_debt_sum:.2f}</b>"])
+            
+            dt = Table(d_list, colWidths=[11.5*cm, 3.5*cm], repeatRows=1)
             dt.setStyle(TableStyle([
-                ("FONTNAME", (0,0), (-1,-1), "geo"),
-                ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+                ("FONTNAME", (0,0), (-1,-1), "geo"), ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+                ("BACKGROUND", (0,0), (-1,0), colors.indianred), ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+                ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+                ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
             ]))
             elements.append(dt)
+            elements.append(PageBreak())
+
+            # ავანსების სია
+            elements.append(Paragraph("ავანსების სია", section_s))
+            a_list = [[Paragraph("<b>მესაკუთრე</b>", cell_text_s), Paragraph("<b>ავანსი</b>", cell_text_s)]]
+            for row in advances_df.values.tolist():
+                a_list.append([Paragraph(str(row[0]), cell_text_s), f"{row[1]:.2f}"])
+                
+            a_list.append([Paragraph("<b>სულ ჯამური ავანსი:</b>", cell_text_s), f"<b>{total_advance_sum:.2f}</b>"])
+            
+            at = Table(a_list, colWidths=[11.5*cm, 3.5*cm], repeatRows=1)
+            at.setStyle(TableStyle([
+                ("FONTNAME", (0,0), (-1,-1), "geo"), ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+                ("BACKGROUND", (0,0), (-1,0), colors.seagreen), ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+                ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+                ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
+            ]))
+            elements.append(at)
 
             doc.build(elements)
-            st.download_button("📥 ჩამოტვირთეთ PDF", buffer.getvalue(), "Report.pdf", "application/pdf")
+            st.download_button(f"📥 ჩამოტვირთეთ {project_name}_Report.pdf", buffer.getvalue(), f"{project_name}_Report.pdf", "application/pdf")
 
     except Exception as e:
         st.error(f"შეცდომა: {e}")
