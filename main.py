@@ -12,7 +12,7 @@ import os
 from datetime import datetime
 
 # --- ფონტის რეგისტრაცია (შეცვლილია სახელი უფრო სტანდარტულით) ---
-FONT_PATH = 'DejaVuSans.ttf' # დარწმუნდით რომ GitHub-ზე ზუსტად ეს სახელი აქვს!
+FONT_PATH = 'dejavu-sans.book.ttf' # დარწმუნდით რომ GitHub-ზე ზუსტად ეს სახელი აქვს!
 try:
     pdfmetrics.registerFont(TTFont('geo', FONT_PATH))
     main_font = 'geo'
