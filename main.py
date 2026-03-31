@@ -89,6 +89,9 @@ if uploaded_file:
         # გადასახადის კოეფიციენტი
         tax_multiplier = 0.8 if apply_tax else 1.0
         
+        # ეს ტექსტი გამოიყენება როგორც ეკრანზე, ისე PDF-ში
+        tax_label = " (წმინდა -20%)" if apply_tax else ""
+        
         raw_collection = payers_count * tariff
         net_collection = raw_collection * tax_multiplier
         
@@ -203,12 +206,13 @@ if uploaded_file:
             elements.append(hr())
 
             summary_data = [
-                [Paragraph("დასახელება", cell_bold_s),                  Paragraph("მნიშვნელობა", cell_bold_s)],
-                [Paragraph("მობინადრეების რაოდენობა", cell_s),      Paragraph(str(total_residents), cell_right_s)],
-                [Paragraph("მევალეების რაოდენობა", cell_s),             Paragraph(str(debtors_count), cell_right_s)],
-                [Paragraph("ამ თვის შემოსავალი (წმინდა -20%)", cell_s), Paragraph(f"{net_collection:.2f} GEL", cell_right_s)],
-                [Paragraph("წინა თვის ნაშთი (+)", cell_s),              Paragraph(f"{previous_balance:.2f} GEL", cell_right_s)],
-                [Paragraph("გაწეული ხარჯი (-)", cell_s),                Paragraph(f"{expenses:.2f} GEL", cell_right_s)],
+                [Paragraph("დასახელება", cell_bold_s), Paragraph("მნიშვნელობა", cell_bold_s)],
+                [Paragraph("მესაკუთრეების რაოდენობა", cell_s), Paragraph(str(total_residents), cell_right_s)],
+                [Paragraph("მევალეების რაოდენობა", cell_s), Paragraph(str(debtors_count), cell_right_s)],
+                # აქ ჩაჯდება დინამიური ტექსტი:
+                [Paragraph(f"ამ თვის შემოსავალი{tax_label}", cell_s), Paragraph(f"{net_collection:.2f} GEL", cell_right_s)],
+                [Paragraph("წინა თვის ნაშთი (+)", cell_s), Paragraph(f"{previous_balance:.2f} GEL", cell_right_s)],
+                [Paragraph("გაწეული ხარჯი (-)", cell_s), Paragraph(f"{expenses:.2f} GEL", cell_right_s)],
             ]
             if total_manager_salary_gross > 0:
                 summary_data.append([Paragraph("ხელფასი (ჯამური დარიცხული)", cell_s), Paragraph(f"{total_manager_salary_gross:.2f} GEL", cell_right_s)])
