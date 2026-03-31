@@ -172,13 +172,15 @@ if uploaded_file:
             
             dt = Table(d_list, colWidths=[11.5*cm, 3.5*cm], repeatRows=1)
             dt.setStyle(TableStyle([
-                ("FONTNAME", (0,0), (-1,-1), "geo"), ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
-                ("BACKGROUND", (0,0), (-1,0), colors.indianred), ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-                ("ALIGN", (1, 1), (1, -1), "RIGHT"), ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+                ("FONTNAME", (0,0), (-1,-1), "geo"), # ეს ხაზი უზრუნველყოფს ქართულს მთელ ცხრილში
+                ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+                ("BACKGROUND", (0,0), (-1,0), colors.indianred), 
+                ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+                ("ALIGN", (1, 1), (1, -1), "RIGHT"), 
+                ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
                 ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
+                ("FONTSIZE", (0,0), (-1,-1), 10), # ზომის დარეგულირება
             ]))
-            elements.append(dt)
-            elements.append(PageBreak())
 
             # ავანსების ცხრილი
             elements.append(Paragraph("ავანსების სია", section_s))
@@ -189,12 +191,15 @@ if uploaded_file:
             
             at = Table(a_list, colWidths=[11.5*cm, 3.5*cm], repeatRows=1)
             at.setStyle(TableStyle([
-                ("FONTNAME", (0,0), (-1,-1), "geo"), ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
-                ("BACKGROUND", (0,0), (-1,0), colors.seagreen), ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-                ("ALIGN", (1, 1), (1, -1), "RIGHT"), ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+                ("FONTNAME", (0,0), (-1,-1), "geo"), # აქაც აუცილებელია ფონტის მითითება
+                ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+                ("BACKGROUND", (0,0), (-1,0), colors.seagreen), 
+                ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+                ("ALIGN", (1, 1), (1, -1), "RIGHT"), 
+                ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
                 ("BACKGROUND", (0, -1), (-1, -1), colors.lightgrey),
+                ("FONTSIZE", (0,0), (-1,-1), 10),
             ]))
-            elements.append(at)
 
             doc.build(elements)
             st.download_button(f"📥 ჩამოტვირთეთ {project_name}_Report.pdf", buffer.getvalue(), f"{project_name}_Report.pdf", "application/pdf")
