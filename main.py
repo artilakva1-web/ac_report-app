@@ -40,7 +40,7 @@ st.set_page_config(page_title="Universal Report Tool", layout="wide")
 with st.sidebar:
     st.header("⚙️ პარამეტრები")
     project_name     = st.text_input("პროექტის დასახელება", value="ახალი პროექტი")
-    total_residents  = st.number_input("მობინადრეების სულ რაოდენობა", min_value=1, value=174)
+    total_residents  = st.number_input("მობინადრეების რაოდენობა", min_value=1, value=174)
     tariff           = st.number_input("ტარიფი მობინადრეზე (GEL)", min_value=0.0, value=20.0, step=0.5)
 
     st.divider()
@@ -199,7 +199,7 @@ if uploaded_file:
 
             summary_data = [
                 [Paragraph("დასახელება", cell_bold_s),                  Paragraph("მნიშვნელობა", cell_bold_s)],
-                [Paragraph("მობინადრეების სულ რაოდენობა", cell_s),      Paragraph(str(total_residents), cell_right_s)],
+                [Paragraph("მობინადრეების რაოდენობა", cell_s),      Paragraph(str(total_residents), cell_right_s)],
                 [Paragraph("მევალეების რაოდენობა", cell_s),             Paragraph(str(debtors_count), cell_right_s)],
                 [Paragraph("ამ თვის შემოსავალი (წმინდა -20%)", cell_s), Paragraph(f"{net_collection:.2f} GEL", cell_right_s)],
                 [Paragraph("წინა თვის ნაშთი (+)", cell_s),              Paragraph(f"{previous_balance:.2f} GEL", cell_right_s)],
