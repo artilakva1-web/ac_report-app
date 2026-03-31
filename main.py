@@ -117,13 +117,13 @@ if uploaded_file:
         today_str = datetime.now().strftime("%d/%m/%Y")
 
         # --- PREVIEW (საიტზე გამოსაჩენი ცხრილები) ---
-        st.subheader("📊 ფინანსური შეჯამება")
+       st.subheader("📊 ფინანსური შეჯამება")
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("ამ თვის შემოსავალი", f"{new_collection:.2f} GEL")
-        c2.metric("ჯამური ბალანსი", f"{total_available:.2f} GEL")
-        c3.metric("გაწეული ხარჯი", f"-{expenses:.2f} GEL")
-        c4.metric("მიმდინარე ნაშთი", f"{final_monthly_balance:.2f} GEL")
-
+        c1.metric("წმინდა შემოსავალი (-20%)", f"{net_collection:.2f} GEL")
+        c2.metric("ჯამური ბალანსი",           f"{total_available:.2f} GEL")
+        c3.metric("ხარჯი + ხელფასი",          f"-{(expenses + manager_salary_gross):.2f} GEL")
+        c4.metric("მიმდინარე ნაშთი",           f"{final_monthly_balance:.2f} GEL")
+        
         tab1, tab2 = st.tabs(["🔴 მევალეების სია", "🟢 ავანსების სია"])
         with tab1:
             st.dataframe(debtors_df, use_container_width=True)
