@@ -81,11 +81,20 @@ if uploaded_file:
         total_debt_sum    = debtors_df["ვალი"].sum()
         total_advance_sum = advances_df["ავანსი"].sum()
 
-        raw_collection        = (total_residents - debtors_count) * tariff
-        net_collection        = raw_collection * 0.8
-        manager_salary_net    = manager_salary_gross * 0.8
-        total_available       = previous_balance + net_collection
-        final_monthly_balance = total_available - expenses - manager_salary_gross
+        # --- განახლებული ლოგიკა ---
+        payers_count = total_residents - debtors_count # რეალური გადამხდელები
+        
+        raw_collection = payers_count * tariff
+        net_collection = raw_collection * 0.8
+        
+        # თავმჯდომარის ხელფასი: ერთეული ლარი * გადამხდელების რაოდენობა
+        total_manager_salary_gross = payers_count * manager_salary_gross
+        manager_salary_net = total_manager_salary_gross * 0.8
+        
+        total_available = previous_balance + net_collection
+        
+        # ბალანსს აკლდება სრული დარიცხული ხელფასი
+        final_monthly_balance = total_available - expenses - total_manager_salary_gross
 
         today_str = datetime.now().strftime("%d/%m/%Y")
 
@@ -94,7 +103,7 @@ if uploaded_file:
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("წმინდა შემოსავალი (-20%)", f"{net_collection:.2f} GEL")
         c2.metric("ჯამური ბალანსი",           f"{total_available:.2f} GEL")
-        c3.metric("ხარჯი + ხელფასი",          f"-{(expenses + manager_salary_gross):.2f} GEL")
+        c3.metric("ხარჯი + ხელფასი", f"-{(expenses + total_manager_salary_gross):.2f} GEL")
         c4.metric("მიმდინარე ნაშთი",           f"{final_monthly_balance:.2f} GEL")
 
         tab1, tab2 = st.tabs(["🔴 მევალეების სია", "🟢 ავანსების სია"])
@@ -196,8 +205,8 @@ if uploaded_file:
                 [Paragraph("წინა თვის ნაშთი (+)", cell_s),              Paragraph(f"{previous_balance:.2f} GEL", cell_right_s)],
                 [Paragraph("გაწეული ხარჯი (-)", cell_s),                Paragraph(f"{expenses:.2f} GEL", cell_right_s)],
             ]
-            if manager_salary_gross > 0:
-                summary_data.append([Paragraph("ხელფასი (დარიცხული)", cell_s),     Paragraph(f"{manager_salary_gross:.2f} GEL", cell_right_s)])
+            if total_manager_salary_gross > 0:
+                summary_data.append([Paragraph("ხელფასი (ჯამური დარიცხული)", cell_s), Paragraph(f"{total_manager_salary_gross:.2f} GEL", cell_right_s)])
                 summary_data.append([Paragraph("ხელფასი (ხელზე ასაღები)", cell_s), Paragraph(f"{manager_salary_net:.2f} GEL", cell_right_s)])
             summary_data.append([
                 Paragraph("მიმდინარე თვის ნაშთი (ნეტო)", cell_bold_s),
