@@ -37,6 +37,10 @@ with st.sidebar:
     previous_balance = st.number_input("წინა თვის ნაშთი (GEL)", value=0.0, step=10.0)
     work_description = st.text_area("შესრულებული სამუშაოები (ფასიანი)", placeholder="მაგ: ლიფტის შეკეთება...")
     expenses = st.number_input("გაწეული ხარჯი (GEL)", min_value=0.0, value=0.0, step=10.0)
+
+    st.divider()
+    st.subheader("👤 მენეჯმენტი")
+    manager_salary = st.number_input("თავმჯდომარის ხელფასი (GEL - დარიცხული)", min_value=0.0, value=0.0, step=10.0)
     
     st.divider()
     st.subheader("🛠️ დამატებითი ინფორმაცია")
@@ -66,9 +70,16 @@ if uploaded_file:
         total_advance_sum = advances_df["ავანსი"].sum()
         
         # --- გამოთვლები ---
-        new_collection = (total_residents - debtors_count) * tariff
-        total_available = previous_balance + new_collection
-        final_monthly_balance = total_available - expenses
+        collected_from_residents = (total_residents - debtors_count) * tariff
+        
+        # საშემოსავლოს გამოკლება (20%)
+        net_collection = collected_from_residents * 0.8  # ბალანსზე დასარიცხი წმინდა თანხა
+        net_salary = manager_salary * 0.8                # ხელზე ასაღები ხელფასი
+        
+        total_available = previous_balance + net_collection
+        # საბოლოო ნაშთი = (წინა ნაშთი + წმინდა შემოსავალი) - ხარჯები - თავმჯდომარის ხელფასი (დარიცხული)
+        # შენიშვნა: თუ ხელფასი ბიუჯეტიდან გადის, ვაკლებთ სრულ დარიცხულს (ხელფასი + საშემოსავლო)
+        final_monthly_balance = total_available - expenses - manager_salary
         
         today_str = datetime.now().strftime("%d/%m/%Y")
         
@@ -106,16 +117,36 @@ if uploaded_file:
             elements.append(Paragraph("ფინანსური ანგარიშგება", title_s))
             elements.append(Paragraph(f"შექმნის თარიღი: {today_str}", date_s))
 
+            # ლოგოს დამატება (თუ ფაილი არსებობს)
+            try:
+                from reportlab.platypus import Image
+                logo = Image("logo.png", width=3*cm, height=3*cm)
+                logo.hAlign = 'CENTER'
+                elements.append(logo)
+                elements.append(Spacer(1, 10))
+            except:
+                pass
+
+            elements.append(Paragraph(f"პროექტი: {project_name}", title_s))
+            # ... (წინა კოდი) ...
+
             summary_data = [
                 ["დასახელება", "მნიშვნელობა"],
                 ["მობინადრეების სულ რაოდენობა", str(total_residents)],
                 ["მევალეების რაოდენობა", str(debtors_count)],
-                ["ამ თვის დარიცხული (შემოსავალი)", f"{new_collection:.2f} GEL"],
+                ["ამ თვის შემოსავალი (Netto -20%)", f"{net_collection:.2f} GEL"],
                 ["წინა თვის ნაშთი (+)", f"{previous_balance:.2f} GEL"],
-                ["ჯამური თანხა (ხარჯამდე)", f"{total_available:.2f} GEL"],
-                ["შესრულებული სამუშაოების ხარჯი (-)", f"{expenses:.2f} GEL"],
-                ["მიმდინარე თვის ნაშთი (ნეტო)", f"{final_monthly_balance:.2f} GEL"]
+                ["გაწეული ხარჯი (-)", f"{expenses:.2f} GEL"]
             ]
+
+            # ხელფასის გამოჩენა მხოლოდ თუ > 0
+            if manager_salary > 0:
+                summary_data.append(["თავმჯდომარის ხელფასი (დარიცხული)", f"{manager_salary:.2f} GEL"])
+                summary_data.append(["ხელზე ასაღები (Netto)", f"{net_salary:.2f} GEL"])
+
+            summary_data.append(["მიმდინარე თვის ნაშთი (ნეტო)", f"{final_monthly_balance:.2f} GEL"])
+            
+            # ცხრილის შექმნა (გაგრძელება იგივეა)
             
             st_table = Table(summary_data, colWidths=[10*cm, 5*cm])
             st_table.setStyle(TableStyle([
