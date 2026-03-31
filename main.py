@@ -40,7 +40,7 @@ st.set_page_config(page_title="Universal Report Tool", layout="wide")
 with st.sidebar:
     st.header("⚙️ პარამეტრები")
     project_name     = st.text_input("პროექტის დასახელება", value="ახალი პროექტი")
-    total_residents  = st.number_input("მობინადრეების რაოდენობა", min_value=1, value=174)
+    total_residents  = st.number_input("მობინადრეების რაოდენობა", min_value=1, value=1)
     tariff           = st.number_input("ტარიფი მობინადრეზე (GEL)", min_value=0.0, value=20.0, step=0.5)
 
     st.divider()
