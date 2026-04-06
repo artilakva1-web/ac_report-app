@@ -101,7 +101,7 @@ if uploaded_file:
         total_available = previous_balance + net_collection
         
         # ბალანსს ყოველთვის აკლდება სრული დარიცხული ხელფასი
-        final_monthly_balance = total_available - expenses - total_manager_salary_gross
+        final_monthly_balance = total_available - expenses
 
         today_str = datetime.now().strftime("%d/%m/%Y")
 
@@ -214,9 +214,21 @@ if uploaded_file:
                 [Paragraph("წინა თვის ნაშთი (+)", cell_s), Paragraph(f"{previous_balance:.2f} GEL", cell_right_s)],
                 [Paragraph("გაწეული ხარჯი (-)", cell_s), Paragraph(f"{expenses:.2f} GEL", cell_right_s)],
             ]
+            # --- განახლებული PDF ბლოკი ---
             if total_manager_salary_gross > 0:
-                summary_data.append([Paragraph("ხელფასი (ჯამური დარიცხული)", cell_s), Paragraph(f"{total_manager_salary_gross:.2f} GEL", cell_right_s)])
-                summary_data.append([Paragraph("ხელფასი (ხელზე ასაღები)", cell_s), Paragraph(f"{manager_salary_net:.2f} GEL", cell_right_s)])
+                # ვამატებთ განმარტებას, რომ ეს თანხა ბიუჯეტიდან არ აკლდება
+                summary_data.append([
+                    Paragraph("თავმჯდომარის ხელფასი (ინფორმაციული)", cell_s), 
+                    Paragraph(f"{total_manager_salary_gross:.2f} GEL", cell_right_s)
+                ])
+                
+                # თუ გადასახადებს ვითვლით, დავწეროთ ხელზე ასაღებიც, ოღონდ ისიც ინფორმაციულად
+                if apply_tax:
+                    summary_data.append([
+                        Paragraph("ხელფასი (ხელზე ასაღები)", cell_s), 
+                        Paragraph(f"{manager_salary_net:.2f} GEL", cell_right_s)
+                    ])
+
             summary_data.append([
                 Paragraph("მიმდინარე თვის ნაშთი (ნეტო)", cell_bold_s),
                 Paragraph(f"{final_monthly_balance:.2f} GEL", cell_right_s)
