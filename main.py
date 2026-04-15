@@ -57,7 +57,9 @@ with st.sidebar:
     st.divider()
     uploaded_file = st.file_uploader("ამოირჩიეთ CSV ფაილი", type=["csv"])
 
-    apply_tax = st.checkbox("გამოაკლდეს საშემოსავლო (20%)", value=True)
+    #Sidebar-ის ბლოკში
+    apply_tax_income = st.checkbox("გამოაკლდეს საშემოსავლო შემოსავალს (20%)", value=True)
+    apply_tax_salary = st.checkbox("გამოაკლდეს საშემოსავლო ხელფასს (20%)", value=True)
 
     st.title(f"🏙️ {project_name}: ფინანსური მენეჯერი")
 
@@ -83,24 +85,24 @@ if uploaded_file:
         total_debt_sum    = debtors_df["ვალი"].sum()
         total_advance_sum = advances_df["ავანსი"].sum()
 
-        # --- განახლებული "ჭკვიანი" ლოგიკა ---
+        # --- განახლებული "ორმაგი" ლოგიკა ---
         payers_count = total_residents - debtors_count 
         
-        # გადასახადის კოეფიციენტი
-        tax_multiplier = 0.8 if apply_tax else 1.0
+        # კოეფიციენტები თითოეულისთვის
+        tax_inc_multiplier = 0.8 if apply_tax_income else 1.0
+        tax_sal_multiplier = 0.8 if apply_tax_salary else 1.0
         
-        # ეს ტექსტი გამოიყენება როგორც ეკრანზე, ისე PDF-ში
-        tax_label = " (წმინდა -20%)" if apply_tax else ""
-        
+        # შემოსავლის დათვლა
         raw_collection = payers_count * tariff
-        net_collection = raw_collection * tax_multiplier
+        net_collection = raw_collection * tax_inc_multiplier
         
+        # ხელფასის დათვლა
         total_manager_salary_gross = payers_count * manager_salary_gross
-        manager_salary_net = total_manager_salary_gross * tax_multiplier
+        manager_salary_net = total_manager_salary_gross * tax_sal_multiplier
         
+        # ბალანსი (შემოსავალს + ნაშთი - ხარჯი)
+        # შენი თხოვნისამებრ, ხელფასი ბალანსს აღარ აკლდება
         total_available = previous_balance + net_collection
-        
-        # ბალანსს ყოველთვის აკლდება სრული დარიცხული ხელფასი
         final_monthly_balance = total_available - expenses
 
         today_str = datetime.now().strftime("%d/%m/%Y")
@@ -205,27 +207,29 @@ if uploaded_file:
             elements.append(Paragraph("ფინანსური შეჯამება", section_s))
             elements.append(hr())
 
+           # ტექსტური მარკერები
+            inc_label = " (წმინდა -20%)" if apply_tax_income else ""
+            sal_label = " (ხელზე ასაღები -20%)" if apply_tax_salary else ""
+
+            # ცხრილის აწყობა
             summary_data = [
                 [Paragraph("დასახელება", cell_bold_s), Paragraph("მნიშვნელობა", cell_bold_s)],
                 [Paragraph("მესაკუთრეების რაოდენობა", cell_s), Paragraph(str(total_residents), cell_right_s)],
                 [Paragraph("მევალეების რაოდენობა", cell_s), Paragraph(str(debtors_count), cell_right_s)],
-                # აქ ჩაჯდება დინამიური ტექსტი:
-                [Paragraph(f"ამ თვის შემოსავალი{tax_label}", cell_s), Paragraph(f"{net_collection:.2f} GEL", cell_right_s)],
+                [Paragraph(f"ამ თვის შემოსავალი{inc_label}", cell_s), Paragraph(f"{net_collection:.2f} GEL", cell_right_s)],
                 [Paragraph("წინა თვის ნაშთი (+)", cell_s), Paragraph(f"{previous_balance:.2f} GEL", cell_right_s)],
                 [Paragraph("გაწეული ხარჯი (-)", cell_s), Paragraph(f"{expenses:.2f} GEL", cell_right_s)],
             ]
-            # --- განახლებული PDF ბლოკი ---
+
             if total_manager_salary_gross > 0:
-                # ვამატებთ განმარტებას, რომ ეს თანხა ბიუჯეტიდან არ აკლდება
                 summary_data.append([
                     Paragraph("თავმჯდომარის ხელფასი (ინფორმაციული)", cell_s), 
                     Paragraph(f"{total_manager_salary_gross:.2f} GEL", cell_right_s)
                 ])
-                
-                # თუ გადასახადებს ვითვლით, დავწეროთ ხელზე ასაღებიც, ოღონდ ისიც ინფორმაციულად
-                if apply_tax:
+                # ვამატებთ "ხელზე ასაღებს" მხოლოდ იმ შემთხვევაში, თუ 20% მონიშნულია
+                if apply_tax_salary:
                     summary_data.append([
-                        Paragraph("ხელფასი (ხელზე ასაღები)", cell_s), 
+                        Paragraph(f"ხელფასი{sal_label}", cell_s), 
                         Paragraph(f"{manager_salary_net:.2f} GEL", cell_right_s)
                     ])
 
