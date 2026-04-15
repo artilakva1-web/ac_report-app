@@ -57,7 +57,9 @@ with st.sidebar:
     st.divider()
     uploaded_file = st.file_uploader("ამოირჩიეთ CSV ფაილი", type=["csv"])
 
-    #Sidebar-ის ბლოკში
+    with st.sidebar:
+    
+        # ... სხვა პარამეტრები ...
     apply_tax_income = st.checkbox("გამოაკლდეს საშემოსავლო შემოსავალს (20%)", value=True)
     apply_tax_salary = st.checkbox("გამოაკლდეს საშემოსავლო ხელფასს (20%)", value=True)
 
@@ -88,20 +90,19 @@ if uploaded_file:
         # --- განახლებული "ორმაგი" ლოგიკა ---
         payers_count = total_residents - debtors_count 
         
-        # კოეფიციენტები თითოეულისთვის
+        # --- გამოთვლის ნაწილი ---
         tax_inc_multiplier = 0.8 if apply_tax_income else 1.0
         tax_sal_multiplier = 0.8 if apply_tax_salary else 1.0
         
-        # შემოსავლის დათვლა
-        raw_collection = payers_count * tariff
+        # შემოსავალი
+        raw_collection = (total_residents - debtors_count) * tariff
         net_collection = raw_collection * tax_inc_multiplier
         
-        # ხელფასის დათვლა
-        total_manager_salary_gross = payers_count * manager_salary_gross
+        # ხელფასი
+        total_manager_salary_gross = (total_residents - debtors_count) * manager_salary_gross
         manager_salary_net = total_manager_salary_gross * tax_sal_multiplier
         
-        # ბალანსი (შემოსავალს + ნაშთი - ხარჯი)
-        # შენი თხოვნისამებრ, ხელფასი ბალანსს აღარ აკლდება
+        # ბალანსი (ხელფასის გამოკლების გარეშე, როგორც მთხოვე)
         total_available = previous_balance + net_collection
         final_monthly_balance = total_available - expenses
 
@@ -110,8 +111,9 @@ if uploaded_file:
         # ── PREVIEW ──────────────────────────────────────────────────────────
         st.subheader("📊 ფინანსური შეჯამება")
         c1, c2, c3, c4 = st.columns(4)
-        income_label = "წმინდა შემოსავალი (-20%)" if apply_tax else "ჯამური შემოსავალი"
-        c1.metric(income_label, f"{net_collection:.2f} GEL")
+        # PREVIEW ნაწილი
+        inc_label = "წმინდა შემოსავალი (-20%)" if apply_tax_income else "ჯამური შემოსავალი"
+        c1.metric(inc_label, f"{net_collection:.2f} GEL")
         c2.metric("ჯამური ბალანსი",           f"{total_available:.2f} GEL")
         c3.metric("ხარჯი + ხელფასი", f"-{(expenses + total_manager_salary_gross):.2f} GEL")
         c4.metric("მიმდინარე ნაშთი",           f"{final_monthly_balance:.2f} GEL")
@@ -206,10 +208,12 @@ if uploaded_file:
             # შეჯამების ცხრილი
             elements.append(Paragraph("ფინანსური შეჯამება", section_s))
             elements.append(hr())
-
-           # ტექსტური მარკერები
-            inc_label = " (წმინდა -20%)" if apply_tax_income else ""
-            sal_label = " (ხელზე ასაღები -20%)" if apply_tax_salary else ""
+# PDF-ის Summary Table
+            inc_pdf_label = " (წმინდა -20%)" if apply_tax_income else ""
+            summary_data.append([
+                Paragraph(f"ამ თვის შემოსავალი{inc_pdf_label}", cell_s), 
+                Paragraph(f"{net_collection:.2f} GEL", cell_right_s)
+            ])
 
             # ცხრილის აწყობა
             summary_data = [
