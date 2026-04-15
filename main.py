@@ -86,19 +86,24 @@ if uploaded_file:
         total_debt_sum    = debtors_df["ვალი"].sum()
         total_advance_sum = advances_df["ავანსი"].sum()
 
-        # --- გამოთვლის ნაწილი ---
+        # --- გამოთვლის ნაწილი (ეს ჩაანაცვლე შენს კოდში) ---
+        payers_count = total_residents - debtors_count 
+        
+        # კოეფიციენტები გადასახადებისთვის
         tax_inc_multiplier = 0.8 if apply_tax_income else 1.0
         tax_sal_multiplier = 0.8 if apply_tax_salary else 1.0
         
-        # შემოსავალი
-        raw_collection = (total_residents - debtors_count) * tariff
+        # 1. შემოსავალი (მხოლოდ გადამხდელებისგან)
+        raw_collection = payers_count * tariff
         net_collection = raw_collection * tax_inc_multiplier
         
-        # ხელფასი
-        total_manager_salary_gross = manager_salary_gross # აქ გამოვიყენოთ პირდაპირ შეყვანილი მნიშვნელობა
+        # 2. თავმჯდომარის ხელფასი (გადამხდელების რაოდენობა * დადგენილი ხელფასი ერთ მობინადრეზე)
+        # თუ გინდა რომ ხელფასი ფიქსირებული იყოს და არ იცვლებოდეს მევალეების მიხედვით, 
+        # მაშინ აქ payers_count-ის ნაცვლად ჩაწერე total_residents
+        total_manager_salary_gross = payers_count * manager_salary_gross
         manager_salary_net = total_manager_salary_gross * tax_sal_multiplier
         
-        # ბალანსი (ხელფასის გამოკლების გარეშე)
+        # 3. ბალანსი (ხელფასის გამოკლების გარეშე, როგორც მთხოვე)
         total_available = previous_balance + net_collection
         final_monthly_balance = total_available - expenses
 
