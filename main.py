@@ -56,6 +56,11 @@ with st.sidebar:
     apply_tax_salary = st.checkbox("გამოაკლდეს საშემოსავლო ხელფასს (20%)", value=True)
 
     st.divider()
+    st.subheader("📄 PDF-ის პარამეტრები")
+    show_debtors_list = st.checkbox("გამოჩნდეს მევალეების სია PDF-ში", value=True)
+    show_advances_list = st.checkbox("გამოჩნდეს ავანსების სია PDF-ში", value=True)
+
+    st.divider()
     st.subheader("🛠️ დამატებითი ინფორმაცია")
     free_work_description = st.text_area("უფასოდ შესრულებული სამუშაოები", placeholder="მაგ: გენერალური დალაგება საჩუქრად...")
 
@@ -90,8 +95,8 @@ if uploaded_file:
         payers_count = total_residents - debtors_count 
         
         # კოეფიციენტები გადასახადებისთვის
-        tax_inc_multiplier = 0.8 if apply_tax_income else 1.0
-        tax_sal_multiplier = 0.8 if apply_tax_salary else 1.0
+        tax_inc_multiplier = 0.8 if _income else 1.0
+        tax_sal_multiplier = 0.8 if _salary else 1.0
         
         # 1. შემოსავალი (მხოლოდ გადამხდელებისგან)
         raw_collection = payers_count * tariff
@@ -113,7 +118,7 @@ if uploaded_file:
         st.subheader("📊 ფინანსური შეჯამება")
         c1, c2, c3, c4 = st.columns(4)
         
-        inc_preview_label = "წმინდა შემოსავალი (-20%)" if apply_tax_income else "ჯამური შემოსავალი"
+        inc_preview_label = "წმინდა შემოსავალი (-20%)" if _income else "ჯამური შემოსავალი"
         c1.metric(inc_preview_label, f"{net_collection:.2f} GEL")
         c2.metric("ხელმისაწვდომი ჯამში", f"{total_available:.2f} GEL")
         c3.metric("მიმდინარე ხარჯი", f"-{expenses:.2f} GEL")
@@ -195,8 +200,8 @@ if uploaded_file:
             elements.append(Paragraph("ფინანსური შეჯამება", section_s))
             elements.append(hr())
 
-            inc_pdf_label = " (წმინდა -20%)" if apply_tax_income else ""
-            sal_pdf_label = " (ხელზე ასაღები -20%)" if apply_tax_salary else ""
+            inc_pdf_label = " (წმინდა -20%)" if _income else ""
+            sal_pdf_label = " (ხელზე ასაღები -20%)" if _salary else ""
 
             # ცხრილის მონაცემების აწყობა
             summary_data = [
@@ -241,35 +246,37 @@ if uploaded_file:
 
             elements.append(PageBreak())
 
-            # მევალეების სია
-            elements.append(Paragraph("მევალეების სია", section_s))
-            elements.append(hr(color=C_RED_HDR))
+            # --- მევალეების სია (მხოლოდ თუ მონიშნულია) ---
+            if show_debtors_list:
+                elements.append(PageBreak())
+                elements.append(Paragraph("მევალეების სია", section_s))
+                elements.append(hr(color=C_RED_HDR))
 
-            d_list = [[Paragraph("მესაკუთრე", cell_bold_s), Paragraph("დავალიანება", cell_bold_s)]]
-            for row in debtors_df.values.tolist():
-                d_list.append([Paragraph(str(row[0]), cell_s), Paragraph(f"{row[1]:.2f} GEL", cell_right_s)])
-            
-            d_list.append([Paragraph("სულ ჯამური დავალიანება:", cell_bold_s), Paragraph(f"{total_debt_sum:.2f} GEL", cell_right_s)])
+                d_list = [[Paragraph("მესაკუთრე", cell_bold_s), Paragraph("დავალიანება", cell_bold_s)]]
+                for row in debtors_df.values.tolist():
+                    d_list.append([Paragraph(str(row[0]), cell_s), Paragraph(f"{row[1]:.2f} GEL", cell_right_s)])
+                
+                d_list.append([Paragraph("სულ ჯამური დავალიანება:", cell_bold_s), Paragraph(f"{total_debt_sum:.2f} GEL", cell_right_s)])
 
-            dt = Table(d_list, colWidths=[PAGE_W * 0.72, PAGE_W * 0.28], repeatRows=1)
-            dt.setStyle(base_table_style(C_RED_HDR, -1))
-            elements.append(dt)
-            
-            elements.append(PageBreak())
+                dt = Table(d_list, colWidths=[PAGE_W * 0.72, PAGE_W * 0.28], repeatRows=1)
+                dt.setStyle(base_table_style(C_RED_HDR, -1))
+                elements.append(dt)
 
-            # ავანსების სია
-            elements.append(Paragraph("ავანსების სია", section_s))
-            elements.append(hr(color=C_GREEN_HDR))
+            # --- ავანსების სია (მხოლოდ თუ მონიშნულია) ---
+            if show_advances_list:
+                elements.append(PageBreak())
+                elements.append(Paragraph("ავანსების სია", section_s))
+                elements.append(hr(color=C_GREEN_HDR))
 
-            a_list = [[Paragraph("მესაკუთრე", cell_bold_s), Paragraph("ავანსი", cell_bold_s)]]
-            for row in advances_df.values.tolist():
-                a_list.append([Paragraph(str(row[0]), cell_s), Paragraph(f"{row[1]:.2f} GEL", cell_right_s)])
-            
-            a_list.append([Paragraph("სულ ჯამური ავანსი:", cell_bold_s), Paragraph(f"{total_advance_sum:.2f} GEL", cell_right_s)])
+                a_list = [[Paragraph("მესაკუთრე", cell_bold_s), Paragraph("ავანსი", cell_bold_s)]]
+                for row in advances_df.values.tolist():
+                    a_list.append([Paragraph(str(row[0]), cell_s), Paragraph(f"{row[1]:.2f} GEL", cell_right_s)])
+                
+                a_list.append([Paragraph("სულ ჯამური ავანსი:", cell_bold_s), Paragraph(f"{total_advance_sum:.2f} GEL", cell_right_s)])
 
-            at = Table(a_list, colWidths=[PAGE_W * 0.72, PAGE_W * 0.28], repeatRows=1)
-            at.setStyle(base_table_style(C_GREEN_HDR, -1))
-            elements.append(at)
+                at = Table(a_list, colWidths=[PAGE_W * 0.72, PAGE_W * 0.28], repeatRows=1)
+                at.setStyle(base_table_style(C_GREEN_HDR, -1))
+                elements.append(at)
 
             doc.build(elements)
             st.download_button(
